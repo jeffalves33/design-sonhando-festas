@@ -1,0 +1,103 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Sonhando Festas — design system (Risograph two-ink)
+ * paper/cream surfaces, ink text, brand blue + accent red.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --font-sans: "Archivo", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+
+  --color-paper: var(--paper);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  --paper: oklch(0.938 0.021 88.2);
+  --cream: oklch(0.973 0.012 90.5);
+  --ink: oklch(0.229 0.021 63.5);
+  --brand: oklch(0.487 0.181 265.3);
+  --accent: oklch(0.591 0.212 33.4);
+  --success: oklch(0.52 0.11 155);
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--cream);
+  --card-foreground: var(--ink);
+  --popover: var(--cream);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--cream);
+  --secondary: oklch(0.92 0.018 88);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.92 0.018 88);
+  --muted-foreground: oklch(0.5 0.02 70);
+  --accent-foreground: var(--cream);
+  --destructive: var(--accent);
+  --destructive-foreground: var(--cream);
+  --border: oklch(0.229 0.021 63.5 / 15%);
+  --input: oklch(0.229 0.021 63.5 / 20%);
+  --ring: var(--brand);
+}
+
+@utility riso {
+  background-image: radial-gradient(rgba(36, 29, 20, 0.1) 0.6px, transparent 0.6px);
+  background-size: 3px 3px;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}

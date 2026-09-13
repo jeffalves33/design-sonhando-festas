@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { AppShell, Money, StatusChip, TopBar } from "@/components/app-shell";
+import {
+  AppShell,
+  FilterChips,
+  Money,
+  StatusChip,
+  TopBar,
+  TopBarLinkAction,
+} from "@/components/app-shell";
 import { brlExact as brl, statusTone, type EventStatus } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
@@ -23,7 +30,6 @@ export const Route = createFileRoute("/eventos/")({
 
 const filtros: (EventStatus | "Todos")[] = [
   "Todos",
-  "Orçamento",
   "Confirmado",
   "Em preparação",
   "Realizado",
@@ -35,39 +41,20 @@ function Eventos() {
     state: { eventos },
   } = useStore();
   const [filtro, setFiltro] = useState<EventStatus | "Todos">("Todos");
-  const lista = eventos.filter((e) => filtro === "Todos" || e.status === filtro);
+  const lista = eventos.filter(
+    (e) => e.status !== "Orçamento" && (filtro === "Todos" || e.status === filtro),
+  );
 
   return (
     <AppShell>
       <TopBar
-        overline="Operação"
         title="Eventos"
-        right={
-          <Link
-            to="/orcamentos/novo"
-            aria-label="Criar orçamento"
-            className="grid size-10 place-items-center rounded-full bg-ink text-cream"
-          >
-            <Plus className="size-5" />
-          </Link>
-        }
+        right={<TopBarLinkAction to="/orcamentos/novo" label="Novo orçamento" icon={Plus} />}
       />
 
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pt-4">
-        {filtros.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFiltro(f)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ${
-              filtro === f ? "bg-ink text-cream" : "text-ink/55 ring-1 ring-ink/20"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
+      <FilterChips options={filtros} value={filtro} onChange={setFiltro} />
 
-      <div className="space-y-2.5 px-4 pt-4">
+      <div className="space-y-2.5 px-4 pt-2">
         {lista.map((e) => {
           const pendente = e.total - e.pago;
           return (

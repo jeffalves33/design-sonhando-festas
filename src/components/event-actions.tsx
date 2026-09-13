@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { FileText, Image as ImageIcon, Paperclip, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Field, Notes, SelectField, Modal, buttonClass } from "./forms";
 import { PaymentForm } from "./finance-pages";
@@ -14,9 +15,18 @@ import {
 } from "@/lib/store";
 import { brlExact, type EventStatus } from "@/lib/data";
 
-export function EventActions({ event }: { event: AppEvent }) {
+export function EventActions({
+  event,
+  quoteWorkspace = false,
+}: {
+  event: AppEvent;
+  quoteWorkspace?: boolean;
+}) {
   const { state, update } = useStore();
-  const [mode, setMode] = useState<"edit" | "items" | "pay" | "approve" | null>(null);
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"edit" | "items" | "pay" | "approve" | "pdf" | "delete" | null>(
+    null,
+  );
   const [notes, setNotes] = useState(event.observacoes);
   const [status, setStatus] = useState<EventStatus>(event.status);
   const [items, setItems] = useState(event.itens);
@@ -74,6 +84,17 @@ export function EventActions({ event }: { event: AppEvent }) {
     });
     setMode(null);
     toast.success("Evento confirmado! Itens reservados e conta a receber criada.");
+    if (quoteWorkspace) navigate({ to: "/eventos/$id", params: { id: event.id } });
+  }
+  function deleteQuote() {
+    update((s) => ({
+      ...s,
+      eventos: s.eventos.filter((item) => item.id !== event.id),
+      contas: s.contas.filter((bill) => bill.eventoId !== event.id),
+    }));
+    setMode(null);
+    toast.success("Orçamento cancelado e removido do sistema.");
+    navigate({ to: "/orcamentos" });
   }
   function saveItems(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -146,30 +167,8 @@ export function EventActions({ event }: { event: AppEvent }) {
     setMode(null);
     toast.success("Detalhes atualizados. Agenda e reservas também.");
   }
-  async function share() {
-    const subtotal = event.itens.reduce((s, i) => s + i.qtd * i.preco, 0);
-    const adjustment = event.total - subtotal;
-    const text = `${state.perfil.empresa}\nProposta para ${event.cliente}\n\n${event.tipo} · ${event.tema}\n${dateLabel(event.date)} · ${event.inicio} às ${event.fim}\n${event.local}\n${event.endereco}\nMontagem: ${event.montagem} · Desmontagem: ${event.desmontagem}\n\n${event.itens.map((i) => `${i.qtd} × ${i.nome} — ${brlExact(i.qtd * i.preco)}`).join("\n")}\n${event.desconto !== undefined ? `Desconto: ${brlExact(event.desconto)}\nExtras: ${brlExact(event.extras || 0)}` : `Ajustes negociados: ${brlExact(adjustment)}`}\nTotal: ${brlExact(event.total)}\n\n${event.observacoes}\n\nCom carinho, ${state.perfil.nome}\n${state.perfil.telefone}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `Proposta · ${event.tema}`, text });
-        update((s) => ({
-          ...s,
-          eventos: s.eventos.map((e) => (e.id === event.id ? { ...e, enviado: true } : e)),
-        }));
-        toast.success("Proposta compartilhada");
-      } else {
-        downloadText(`proposta-${event.id}.txt`, text);
-        update((s) => ({
-          ...s,
-          eventos: s.eventos.map((e) => (e.id === event.id ? { ...e, enviado: true } : e)),
-        }));
-        toast.success("Proposta baixada. Envie ao cliente pelo canal que preferir.");
-      }
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError"))
-        toast.error("Não foi possível compartilhar. Tente novamente.");
-    }
+  function share() {
+    setMode("pdf");
   }
   return (
     <>
@@ -211,9 +210,38 @@ export function EventActions({ event }: { event: AppEvent }) {
           onClick={share}
           className={`min-h-11 rounded-lg px-3 text-sm font-semibold text-brand ring-1 ring-brand/30 ${event.status === "Orçamento" ? "col-span-2" : ""}`}
         >
-          {event.status === "Orçamento" ? "Compartilhar proposta" : "Compartilhar resumo"}
+          <FileText className="mr-1 inline size-4" />
+          {event.status === "Orçamento" ? "Gerar proposta em PDF" : "Gerar resumo em PDF"}
         </button>
+        {quoteWorkspace && event.status === "Orçamento" && (
+          <button
+            onClick={() => setMode("delete")}
+            className="col-span-2 min-h-11 rounded-lg px-3 text-sm font-semibold text-accent ring-1 ring-accent/35"
+          >
+            <Trash2 className="mr-1 inline size-4" /> Cancelar e excluir orçamento
+          </button>
+        )}
       </div>
+      <Modal open={mode === "delete"} onClose={() => setMode(null)} title="Excluir este orçamento?">
+        <p className="text-sm text-ink/70">
+          A proposta de {event.cliente} será removida completamente do sistema.
+        </p>
+        <p className="text-xs font-semibold text-accent">Esta ação não pode ser desfeita.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setMode(null)}
+            className="min-h-11 rounded-lg text-sm font-semibold ring-1 ring-ink/20"
+          >
+            Manter
+          </button>
+          <button
+            onClick={deleteQuote}
+            className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-white"
+          >
+            Sim, excluir
+          </button>
+        </div>
+      </Modal>
       <Modal open={mode === "approve"} onClose={() => setMode(null)} title="Confirmar essa festa?">
         <p className="text-sm text-ink/70">
           Ao aprovar, os itens físicos serão reservados na data do evento e{" "}
@@ -229,6 +257,76 @@ export function EventActions({ event }: { event: AppEvent }) {
       </Modal>
       <Modal open={mode === "pay"} onClose={() => setMode(null)} title="Recebimento do evento">
         {bills[0] && <PaymentForm bill={bills[0]} close={() => setMode(null)} />}
+      </Modal>
+      <Modal open={mode === "pdf"} onClose={() => setMode(null)} title="Prévia do relatório em PDF">
+        <div className="overflow-hidden rounded-xl bg-white text-ink shadow-sm ring-1 ring-ink/15">
+          <div className="flex items-center gap-3 bg-ink p-4 text-cream">
+            <img
+              src="/logo.jpg"
+              alt="Sonhando Festas"
+              className="size-14 rounded-lg object-contain"
+            />
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-cream/60">
+                Proposta comercial
+              </p>
+              <p className="text-base font-semibold">{event.tema}</p>
+              <p className="text-xs text-cream/60">Preparada para {event.cliente}</p>
+            </div>
+          </div>
+          {event.referenciaImagem && (
+            <div className="p-4 pb-0">
+              <p className="mb-2 flex items-center gap-2 text-xs font-semibold">
+                <ImageIcon className="size-4 text-brand" /> Referência enviada pelo cliente
+              </p>
+              <img
+                src={event.referenciaImagem}
+                alt="Referência visual incluída na prévia do PDF"
+                className="h-44 w-full rounded-lg object-cover"
+              />
+            </div>
+          )}
+          <div className="space-y-3 p-4 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <p>
+                <span className="block text-ink/45">Evento</span>
+                {event.tipo}
+              </p>
+              <p>
+                <span className="block text-ink/45">Data</span>
+                {dateLabel(event.date)}
+              </p>
+            </div>
+            <div className="border-t border-ink/10 pt-3">
+              <p className="font-semibold">Itens, serviços e valores negociados</p>
+              <p className="mt-1 text-ink/55">
+                {event.itens.length} itens · total de {brlExact(event.total)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg bg-brand/8 p-3 text-xs text-ink/65 ring-1 ring-brand/20">
+          <p className="flex items-center gap-2 font-semibold text-brand">
+            <Paperclip className="size-4" /> O PDF reunirá tudo em um único arquivo
+          </p>
+          <p className="mt-2">
+            Logo, dados do cliente e evento, imagem de referência, itens, valores, observações e
+            contato da Marcia.
+          </p>
+        </div>
+        <p className="text-xs text-ink/50">
+          Demonstração visual: nesta etapa do protótipo, o arquivo PDF ainda não é criado.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setMode(null);
+            toast.success("Prévia do PDF simulada com a referência do cliente.");
+          }}
+          className={buttonClass + " w-full"}
+        >
+          Simular geração do PDF
+        </button>
       </Modal>
       <Modal open={mode === "items"} onClose={() => setMode(null)} title="Itens da proposta">
         <form onSubmit={saveItems} className="space-y-3">
@@ -401,7 +499,9 @@ export function EventActions({ event }: { event: AppEvent }) {
           />
           <SelectField label="Status" value={status} onChange={(v) => setStatus(v as EventStatus)}>
             {(event.status === "Orçamento"
-              ? ["Orçamento", "Cancelado"]
+              ? quoteWorkspace
+                ? ["Orçamento"]
+                : ["Orçamento", "Cancelado"]
               : event.status === "Cancelado"
                 ? ["Cancelado"]
                 : ["Confirmado", "Em preparação", "Realizado", "Cancelado"]

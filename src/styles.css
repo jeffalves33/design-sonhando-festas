@@ -90,11 +90,20 @@
 }
 
 @layer base {
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+
   * {
     border-color: var(--color-border);
   }
 
   body {
+    min-height: 100dvh;
+    overflow-x: hidden;
     background-color: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);

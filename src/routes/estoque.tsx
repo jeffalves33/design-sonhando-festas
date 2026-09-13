@@ -203,7 +203,6 @@ function StockPage() {
     <AppShell>
       <TopBar
         title="Catálogo e estoque"
-        overline="Tudo pronto para a próxima festa"
         back={{ to: "/", label: "Início" }}
         right={
           <AddButton

@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { CalendarDays, Home, PartyPopper, Users, Wallet } from "lucide-react";
+import { CalendarDays, Home, PartyPopper, Users, Wallet, type LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 const tabs = [
@@ -59,12 +59,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 export function TopBar({
-  overline,
   title,
   right,
   back,
 }: {
-  overline?: string;
   title: string;
   right?: ReactNode;
   back?: { to: string; label?: string };
@@ -81,14 +79,60 @@ export function TopBar({
       ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="min-w-0">
-          {overline ? (
-            <p className="text-[11px] uppercase tracking-[0.14em] text-ink/50">{overline}</p>
-          ) : null}
-          <h1 className="truncate text-2xl font-semibold leading-none tracking-tight">{title}</h1>
+          <h1 className="truncate pb-0.5 text-2xl font-semibold leading-[1.15] tracking-tight">
+            {title}
+          </h1>
         </div>
-        {right ? <div className="shrink-0">{right}</div> : null}
+        {right ? <div className="flex min-h-10 shrink-0 items-center">{right}</div> : null}
       </div>
     </header>
+  );
+}
+
+export const topBarActionClass =
+  "grid size-10 shrink-0 place-items-center rounded-full bg-ink text-cream transition-colors hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
+
+export function TopBarLinkAction({
+  to,
+  label,
+  icon: Icon,
+}: {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <Link to={to} aria-label={label} title={label} className={topBarActionClass}>
+      <Icon className="size-5" />
+    </Link>
+  );
+}
+
+export function FilterChips<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly T[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2 pt-4">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={option === value}
+          onClick={() => onChange(option)}
+          className={`min-h-9 shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold leading-4 ${
+            option === value ? "bg-ink text-cream" : "text-ink/55 ring-1 ring-inset ring-ink/20"
+          }`}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
   );
 }
 

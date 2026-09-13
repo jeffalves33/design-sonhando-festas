@@ -15,6 +15,7 @@ export type AppEvent = Omit<Evento, "itens"> & {
   desconto?: number;
   extras?: number;
   enviado?: boolean;
+  referenciaImagem?: string;
   itens: (Evento["itens"][number] & { estoqueId?: string | undefined })[];
 };
 export type Stock = ItemEstoque & { foto?: string; servico?: boolean; indisponivel?: number };
@@ -41,6 +42,7 @@ export const dateLabel = (date: string) => new Date(date + "T12:00:00").toLocale
 export const uid = () => crypto.randomUUID();
 const seedEvents: AppEvent[] = eventos.map((e) => ({
   ...e,
+  ...(e.id === "evt-marina" ? { referenciaImagem: "/orcamento-referencia-festa.jpg" } : {}),
   date: `2026-${e.dataCurta.slice(3)}-${e.dataCurta.slice(0, 2)}`,
   desconto: Math.max(0, e.itens.reduce((s, i) => s + i.qtd * i.preco, 0) - e.total),
   extras: Math.max(0, e.total - e.itens.reduce((s, i) => s + i.qtd * i.preco, 0)),

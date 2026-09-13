@@ -2,10 +2,11 @@ import type { ReactNode, InputHTMLAttributes } from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
+import { topBarActionClass } from "./app-shell";
 export const buttonClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-cream disabled:opacity-40";
 export const inputClass =
-  "w-full min-h-11 rounded-lg border border-ink/20 bg-cream px-3 py-2 text-base outline-none focus:ring-2 focus:ring-brand";
+  "min-h-11 min-w-0 w-full max-w-full rounded-lg border border-ink/20 bg-cream px-3 py-2 text-base outline-none focus:ring-2 focus:ring-brand";
 export const cardClass = "rounded-xl p-3.5 ring-1 ring-ink/15";
 export function Field({
   label,
@@ -110,11 +111,7 @@ export function Modal({
 }
 export function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <button
-      aria-label={label}
-      onClick={onClick}
-      className="grid size-11 place-items-center rounded-full bg-ink text-cream"
-    >
+    <button aria-label={label} onClick={onClick} className={topBarActionClass}>
       <Plus className="size-5" />
     </button>
   );

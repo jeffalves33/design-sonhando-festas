@@ -1,37 +1,30 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, ImagePlus, Paperclip, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { AppShell, TopBar, Money } from "./app-shell";
+import { AppShell, TopBar, Money, TopBarLinkAction } from "./app-shell";
 import { Field, SelectField, Notes, Empty, buttonClass, cardClass } from "./forms";
 import { useStore, uid, dateLabel, conflicts, stockProblems, type AppEvent } from "@/lib/store";
 import { brlExact } from "@/lib/data";
 
 export function QuotesPage() {
   const { state } = useStore();
-  const [filter, setFilter] = useState("Pendentes");
+  const [filter, setFilter] = useState("Em aberto");
   const list = state.eventos.filter((e) =>
-    filter === "Pendentes"
+    filter === "Em aberto"
       ? e.status === "Orçamento"
-      : filter === "Aprovados"
-        ? !["Orçamento", "Cancelado"].includes(e.status)
-        : e.status === "Cancelado",
+      : !["Orçamento", "Cancelado"].includes(e.status),
   );
   return (
     <AppShell>
       <TopBar
         title="Orçamentos"
-        overline="Cada sonho, uma proposta"
         back={{ to: "/", label: "Início" }}
-        right={
-          <Link aria-label="Novo orçamento" to="/orcamentos/novo" className={buttonClass}>
-            <Plus className="size-4" />
-          </Link>
-        }
+        right={<TopBarLinkAction to="/orcamentos/novo" label="Novo orçamento" icon={Plus} />}
       />
       <div className="space-y-3 px-4 pt-4">
         <div className="flex gap-2">
-          {["Pendentes", "Aprovados", "Cancelados"].map((f) => (
+          {["Em aberto", "Aprovados"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -42,11 +35,21 @@ export function QuotesPage() {
           ))}
         </div>
         {list.map((e) => (
-          <Link to="/eventos/$id" params={{ id: e.id }} key={e.id} className={cardClass + " block"}>
+          <Link
+            to={e.status === "Orçamento" ? "/orcamentos/$id" : "/eventos/$id"}
+            params={{ id: e.id }}
+            key={e.id}
+            className={cardClass + " block"}
+          >
             <p className="text-sm font-semibold">{e.cliente}</p>
             <p className="mt-1 text-xs text-ink/55">
               {e.tema} · {dateLabel(e.date)}
             </p>
+            {e.referenciaImagem && (
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-brand">
+                <Paperclip className="size-3.5" /> Referência do cliente anexada
+              </p>
+            )}
             <div className="mt-3 flex justify-between gap-2">
               <Money value={brlExact(e.total)} />
               <span className="text-xs text-brand">
@@ -79,6 +82,7 @@ export function QuoteForm() {
   const [customer, setCustomer] = useState("");
   const [items, setItems] = useState<AppEvent["itens"]>([]);
   const [catalog, setCatalog] = useState("");
+  const [referenceAttached, setReferenceAttached] = useState(true);
   const [details, setDetails] = useState({
     tipo: "Aniversário infantil",
     tema: "",
@@ -125,6 +129,7 @@ export function QuoteForm() {
     itens: items,
     desconto: Number(details.desconto),
     extras: Number(details.extras),
+    ...(referenceAttached ? { referenciaImagem: "/orcamento-referencia-festa.jpg" } : {}),
   };
   const clashes = conflicts(preview, state.eventos);
   const shortages = stockProblems(preview, state);
@@ -161,11 +166,7 @@ export function QuoteForm() {
   const labels = ["Cliente", "Evento", "Itens", "Valores", "Resumo"];
   return (
     <AppShell>
-      <TopBar
-        title="Novo orçamento"
-        overline={`Passo ${step + 1} de 5`}
-        back={{ to: "/orcamentos", label: "Orçamentos" }}
-      />
+      <TopBar title="Novo orçamento" back={{ to: "/orcamentos", label: "Orçamentos" }} />
       <div className="px-4 pt-4">
         <div className="mb-5 grid grid-cols-5 gap-1">
           {labels.map((l, i) => (
@@ -292,6 +293,53 @@ export function QuoteForm() {
                   onChange={(e) => set("convidados", e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-medium">Referências do cliente</p>
+                  <p className="mt-1 text-xs text-ink/55">
+                    Imagens recebidas pelo WhatsApp ajudam a alinhar estilo, cores e montagem.
+                  </p>
+                </div>
+                {referenceAttached ? (
+                  <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+                    <img
+                      src="/orcamento-referencia-festa.jpg"
+                      alt="Referência visual de decoração enviada pelo cliente"
+                      className="h-48 w-full object-cover"
+                    />
+                    <div className="flex items-center gap-3 p-3">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+                        <Paperclip className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold">
+                          referencia-festa-whatsapp.jpg
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-ink/50">
+                          Imagem de inspiração · será incluída no PDF
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReferenceAttached(false)}
+                        className="min-h-11 px-2 text-xs text-accent"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceAttached(true)}
+                    className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-brand/40 bg-brand/5 p-4 text-center text-brand"
+                  >
+                    <ImagePlus className="size-6" />
+                    <span className="text-sm font-semibold">Anexar imagem de referência</span>
+                    <span className="text-[11px] text-ink/50">Foto recebida pelo WhatsApp</span>
+                  </button>
+                )}
+              </div>
               {clashes.length > 0 && (
                 <p role="alert" className="rounded-lg bg-accent/10 p-3 text-xs text-accent">
                   Atenção, Marcia: a operação coincide com{" "}
@@ -328,6 +376,12 @@ export function QuoteForm() {
                   </option>
                 ))}
               </SelectField>
+              <Link
+                to="/estoque"
+                className="inline-flex min-h-11 items-center text-xs font-semibold text-brand underline underline-offset-4"
+              >
+                Abrir catálogo e estoque
+              </Link>
               {items.map((item, index) => (
                 <div key={index} className={cardClass + " space-y-3"}>
                   <div className="flex items-center justify-between">
@@ -459,6 +513,24 @@ export function QuoteForm() {
                   {dateLabel(details.date)} · {details.inicio} · {details.local}
                 </p>
               </div>
+              {referenceAttached && (
+                <div className={cardClass + " overflow-hidden p-0"}>
+                  <img
+                    src="/orcamento-referencia-festa.jpg"
+                    alt="Referência visual anexada ao orçamento"
+                    className="h-40 w-full object-cover"
+                  />
+                  <div className="flex items-center gap-2 p-3">
+                    <Paperclip className="size-4 text-brand" />
+                    <div>
+                      <p className="text-xs font-semibold">Referência do cliente anexada</p>
+                      <p className="mt-0.5 text-[11px] text-ink/50">
+                        Esta imagem aparecerá no relatório em PDF.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {items.map((i, index) => (
                 <div key={index} className="flex justify-between gap-3 text-sm">
                   <span>
@@ -502,9 +574,10 @@ export function QuoteForm() {
               <button type="button" onClick={save} className={buttonClass + " w-full"}>
                 Salvar orçamento
               </button>
-              <p className="text-center text-xs text-ink/50">
-                Depois de salvar, você pode compartilhar a proposta pessoalmente.
-              </p>
+              <div className="flex items-center justify-center gap-2 text-center text-xs text-ink/50">
+                <FileText className="size-4" />
+                Depois de salvar, visualize a proposta como relatório em PDF.
+              </div>
             </>
           )}
           <div className="flex gap-2">

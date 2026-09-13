@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Navigation } from "lucide-react";
-import { AppShell, Section, StatusChip, TopBar } from "@/components/app-shell";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Navigation, Plus } from "lucide-react";
+import { AppShell, Section, StatusChip, TopBar, TopBarLinkAction } from "@/components/app-shell";
 import { Empty } from "@/components/forms";
 import { statusTone } from "@/lib/data";
 import { useStore, conflicts, demoToday } from "@/lib/store";
@@ -34,7 +34,7 @@ export function Agenda() {
   const list = state.eventos
     .filter(
       (e) =>
-        e.status !== "Cancelado" &&
+        !["Cancelado", "Orçamento"].includes(e.status) &&
         (mode === "Dia"
           ? e.date === selected
           : mode === "Mês"
@@ -53,16 +53,8 @@ export function Agenda() {
   return (
     <AppShell>
       <TopBar
-        overline="Uma festa de cada vez"
         title="Agenda"
-        right={
-          <Link
-            to="/orcamentos/novo"
-            className="inline-flex min-h-11 items-center text-xs font-semibold text-brand"
-          >
-            + Orçamento
-          </Link>
-        }
+        right={<TopBarLinkAction to="/orcamentos/novo" label="Novo orçamento" icon={Plus} />}
       />
       <div className="px-4 pt-4">
         <div className="mb-4 flex rounded-lg bg-ink/5 p-1">
@@ -107,7 +99,9 @@ export function Agenda() {
             ))}
           {days.map((d) => {
             const day = iso(d);
-            const events = state.eventos.filter((e) => e.date === day && e.status !== "Cancelado");
+            const events = state.eventos.filter(
+              (e) => e.date === day && !["Cancelado", "Orçamento"].includes(e.status),
+            );
             const conflict = events.some((e) => conflicts(e, state.eventos).length > 0);
             return (
               <button

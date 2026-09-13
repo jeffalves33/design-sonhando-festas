@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Boxes, FileText, PlusCircle } from "lucide-react";
+import { AlertTriangle, Boxes, CalendarDays, ClipboardList, PlusCircle } from "lucide-react";
 import { AppShell, Money, Section, StatusChip } from "@/components/app-shell";
 import { brl, statusTone } from "@/lib/data";
-import { useStore, demoToday, conflicts, activeEvent, reservedFor } from "@/lib/store";
+import { useStore, demoToday, conflicts, activeEvent } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
 
 function Inicio() {
   const { state } = useStore();
-  const { eventos, estoque } = state;
+  const { eventos } = state;
   const contasReceber = state.contas.filter((c) => c.tipo === "receber");
   const contasPagar = state.contas.filter((c) => c.tipo === "pagar");
   const upcoming = eventos
@@ -35,14 +35,6 @@ function Inicio() {
   const aReceber = contasReceber.reduce((s, t) => s + (t.valor - t.pago), 0);
   const aPagar = contasPagar.reduce((s, c) => s + c.valor - c.pago, 0);
   const pendentes = eventos.filter((e) => e.status === "Orçamento");
-  const alertaEstoque = estoque
-    .filter(
-      (i) => !i.servico && reservedFor(i.id, demoToday, eventos) >= i.total - (i.indisponivel || 0),
-    )
-    .map((i) => ({
-      ...i,
-      alerta: "Sem unidades livres em 14/06. Confira a disponibilidade antes de reservar.",
-    }));
   const clash = upcoming.find((e) => conflicts(e, eventos).length > 0);
   const monthBills = state.contas.filter((c) => c.vencimento.startsWith("2026-06"));
   const entrada = monthBills.filter((c) => c.tipo === "receber").reduce((s, c) => s + c.pago, 0);
@@ -56,7 +48,7 @@ function Inicio() {
             <p className="text-[11px] uppercase tracking-[0.14em] text-ink/50">
               Domingo, 14 Jun · demonstração
             </p>
-            <h1 className="truncate text-2xl font-semibold leading-none tracking-tight">
+            <h1 className="truncate pb-0.5 text-2xl font-semibold leading-[1.15] tracking-tight">
               Bom dia, {state.perfil.nome.split(" ")[0]}
             </h1>
           </div>
@@ -68,12 +60,45 @@ function Inicio() {
             />
           </Link>
         </div>
-        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-brand">
-          {state.perfil.empresa}
-        </p>
       </header>
 
       <div className="px-4">
+        <section aria-labelledby="acoes-principais" className="mb-4">
+          <h2 id="acoes-principais" className="mb-2 text-sm font-semibold">
+            O que você precisa fazer?
+          </h2>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Link
+              to="/orcamentos/novo"
+              className="flex min-h-20 items-center gap-3 rounded-xl bg-ink p-3 text-cream"
+            >
+              <PlusCircle className="size-5 shrink-0" />
+              <span className="text-sm font-semibold">Novo orçamento</span>
+            </Link>
+            <Link
+              to="/orcamentos"
+              className="flex min-h-20 items-center gap-3 rounded-xl p-3 ring-1 ring-inset ring-ink/15"
+            >
+              <ClipboardList className="size-5 shrink-0 text-brand" />
+              <span className="text-sm font-semibold">Orçamentos ({pendentes.length})</span>
+            </Link>
+            <Link
+              to="/estoque"
+              className="flex min-h-20 items-center gap-3 rounded-xl p-3 ring-1 ring-inset ring-ink/15"
+            >
+              <Boxes className="size-5 shrink-0 text-brand" />
+              <span className="text-sm font-semibold">Catálogo e estoque</span>
+            </Link>
+            <Link
+              to="/agenda"
+              className="flex min-h-20 items-center gap-3 rounded-xl p-3 ring-1 ring-inset ring-ink/15"
+            >
+              <CalendarDays className="size-5 shrink-0 text-brand" />
+              <span className="text-sm font-semibold">Ver agenda</span>
+            </Link>
+          </div>
+        </section>
+
         {clash && (
           <Link
             to="/agenda"
@@ -217,7 +242,7 @@ function Inicio() {
           {pendentes.map((e) => (
             <Link
               key={e.id}
-              to="/eventos/$id"
+              to="/orcamentos/$id"
               params={{ id: e.id }}
               className="flex items-center justify-between rounded-lg px-3 py-2.5 ring-1 ring-ink/15"
             >
@@ -234,95 +259,6 @@ function Inicio() {
             </p>
           )}
         </div>
-      </Section>
-
-      <Section
-        title="Alertas de estoque"
-        action={
-          <Link to="/estoque" className="text-[11px] text-ink/50">
-            ver estoque
-          </Link>
-        }
-      >
-        <div className="space-y-2">
-          {alertaEstoque.map((i) => (
-            <div key={i.id} className="rounded-lg bg-accent/8 p-3 ring-1 ring-accent/25">
-              <p className="text-[13px] font-semibold">{i.nome}</p>
-              <p className="mt-0.5 text-[11px] text-ink/60">{i.alerta}</p>
-            </div>
-          ))}
-          {!alertaEstoque.length && (
-            <p className="rounded-lg bg-brand/8 p-3 text-xs text-brand">
-              Estoque sem alertas para hoje. Confira outras datas antes de fechar uma festa.
-            </p>
-          )}
-        </div>
-      </Section>
-
-      <Section title="Atalhos">
-        <Link
-          to="/orcamentos"
-          className="mb-3 flex min-h-11 items-center justify-between rounded-lg px-3 text-sm ring-1 ring-ink/15"
-        >
-          Todos os orçamentos <ArrowRight className="size-4" />
-        </Link>
-        <div className="grid grid-cols-3 gap-2.5">
-          <Link
-            to="/orcamentos/novo"
-            className="flex flex-col items-center gap-1.5 rounded-lg bg-ink px-2 py-3 text-cream"
-          >
-            <PlusCircle className="size-5" />
-            <span className="text-[11px] font-semibold">Orçamento</span>
-          </Link>
-          <Link
-            to="/estoque"
-            className="flex flex-col items-center gap-1.5 rounded-lg px-2 py-3 ring-1 ring-ink/15"
-          >
-            <Boxes className="size-5" />
-            <span className="text-[11px] font-semibold">Estoque</span>
-          </Link>
-          <Link
-            to="/relatorios"
-            className="flex flex-col items-center gap-1.5 rounded-lg px-2 py-3 ring-1 ring-ink/15"
-          >
-            <FileText className="size-5" />
-            <span className="text-[11px] font-semibold">Relatórios</span>
-          </Link>
-        </div>
-        <Link
-          to="/financeiro"
-          className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-brand/12 py-3 text-[13px] font-semibold text-brand ring-1 ring-brand/30"
-        >
-          Abrir financeiro <ArrowRight className="size-4" />
-        </Link>
-      </Section>
-      <Section title="Próximos eventos">
-        <div className="space-y-2">
-          {upcoming
-            .filter((e) => e.date > demoToday)
-            .slice(0, 3)
-            .map((e) => (
-              <Link
-                key={e.id}
-                to="/eventos/$id"
-                params={{ id: e.id }}
-                className="block rounded-lg p-3 ring-1 ring-ink/15"
-              >
-                <p className="text-sm font-semibold">
-                  {e.tema} · {e.cliente}
-                </p>
-                <p className="mt-1 text-xs text-ink/55">
-                  {e.dataCurta} · {e.inicio} · {e.local}
-                </p>
-              </Link>
-            ))}
-        </div>
-        <Link
-          to="/configuracoes"
-          className="mt-3 flex min-h-11 items-center justify-between text-sm text-ink/60"
-        >
-          Perfil e configurações <ArrowRight className="size-4" />
-        </Link>
       </Section>
     </AppShell>
   );

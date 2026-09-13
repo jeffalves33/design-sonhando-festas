@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as EstoqueRouteImport } from './routes/estoque'
-import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as EventosIndexRouteImport } from './routes/eventos.index'
@@ -23,6 +22,7 @@ import { Route as FinanceiroFluxoRouteImport } from './routes/financeiro.fluxo'
 import { Route as FinanceiroPagarRouteImport } from './routes/financeiro.pagar'
 import { Route as FinanceiroReceberRouteImport } from './routes/financeiro.receber'
 import { Route as OrcamentosIndexRouteImport } from './routes/orcamentos.index'
+import { Route as OrcamentosIdRouteImport } from './routes/orcamentos.$id'
 import { Route as OrcamentosNovoRouteImport } from './routes/orcamentos.novo'
 
 const IndexRoute = IndexRouteImport.update({
@@ -43,11 +43,6 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
 const EstoqueRoute = EstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RelatoriosRoute = RelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
@@ -95,6 +90,11 @@ const OrcamentosIndexRoute = OrcamentosIndexRouteImport.update({
   path: '/orcamentos/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrcamentosIdRoute = OrcamentosIdRouteImport.update({
+  id: '/orcamentos/$id',
+  path: '/orcamentos/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrcamentosNovoRoute = OrcamentosNovoRouteImport.update({
   id: '/orcamentos/novo',
   path: '/orcamentos/novo',
@@ -106,12 +106,12 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AgendaRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/estoque': typeof EstoqueRoute
-  '/relatorios': typeof RelatoriosRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/eventos/$id': typeof EventosIdRoute
   '/financeiro/fluxo': typeof FinanceiroFluxoRoute
   '/financeiro/pagar': typeof FinanceiroPagarRoute
   '/financeiro/receber': typeof FinanceiroReceberRoute
+  '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
   '/clientes/': typeof ClientesIndexRoute
   '/eventos/': typeof EventosIndexRoute
@@ -123,12 +123,12 @@ export interface FileRoutesByTo {
   '/agenda': typeof AgendaRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/estoque': typeof EstoqueRoute
-  '/relatorios': typeof RelatoriosRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/eventos/$id': typeof EventosIdRoute
   '/financeiro/fluxo': typeof FinanceiroFluxoRoute
   '/financeiro/pagar': typeof FinanceiroPagarRoute
   '/financeiro/receber': typeof FinanceiroReceberRoute
+  '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
   '/clientes': typeof ClientesIndexRoute
   '/eventos': typeof EventosIndexRoute
@@ -141,12 +141,12 @@ export interface FileRoutesById {
   '/agenda': typeof AgendaRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/estoque': typeof EstoqueRoute
-  '/relatorios': typeof RelatoriosRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/eventos/$id': typeof EventosIdRoute
   '/financeiro/fluxo': typeof FinanceiroFluxoRoute
   '/financeiro/pagar': typeof FinanceiroPagarRoute
   '/financeiro/receber': typeof FinanceiroReceberRoute
+  '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
   '/clientes/': typeof ClientesIndexRoute
   '/eventos/': typeof EventosIndexRoute
@@ -160,12 +160,12 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/configuracoes'
     | '/estoque'
-    | '/relatorios'
     | '/clientes/$id'
     | '/eventos/$id'
     | '/financeiro/fluxo'
     | '/financeiro/pagar'
     | '/financeiro/receber'
+    | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/clientes/'
     | '/eventos/'
@@ -177,12 +177,12 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/configuracoes'
     | '/estoque'
-    | '/relatorios'
     | '/clientes/$id'
     | '/eventos/$id'
     | '/financeiro/fluxo'
     | '/financeiro/pagar'
     | '/financeiro/receber'
+    | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/clientes'
     | '/eventos'
@@ -194,12 +194,12 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/configuracoes'
     | '/estoque'
-    | '/relatorios'
     | '/clientes/$id'
     | '/eventos/$id'
     | '/financeiro/fluxo'
     | '/financeiro/pagar'
     | '/financeiro/receber'
+    | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/clientes/'
     | '/eventos/'
@@ -212,12 +212,12 @@ export interface RootRouteChildren {
   AgendaRoute: typeof AgendaRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   EstoqueRoute: typeof EstoqueRoute
-  RelatoriosRoute: typeof RelatoriosRoute
   ClientesIdRoute: typeof ClientesIdRoute
   EventosIdRoute: typeof EventosIdRoute
   FinanceiroFluxoRoute: typeof FinanceiroFluxoRoute
   FinanceiroPagarRoute: typeof FinanceiroPagarRoute
   FinanceiroReceberRoute: typeof FinanceiroReceberRoute
+  OrcamentosIdRoute: typeof OrcamentosIdRoute
   OrcamentosNovoRoute: typeof OrcamentosNovoRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
   EventosIndexRoute: typeof EventosIndexRoute
@@ -253,13 +253,6 @@ declare module '@tanstack/react-router' {
       path: '/estoque'
       fullPath: '/estoque'
       preLoaderRoute: typeof EstoqueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/relatorios': {
-      id: '/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof RelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/': {
@@ -325,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrcamentosIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orcamentos/$id': {
+      id: '/orcamentos/$id'
+      path: '/orcamentos/$id'
+      fullPath: '/orcamentos/$id'
+      preLoaderRoute: typeof OrcamentosIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orcamentos/novo': {
       id: '/orcamentos/novo'
       path: '/orcamentos/novo'
@@ -340,12 +340,12 @@ const rootRouteChildren: RootRouteChildren = {
   AgendaRoute: AgendaRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   EstoqueRoute: EstoqueRoute,
-  RelatoriosRoute: RelatoriosRoute,
   ClientesIdRoute: ClientesIdRoute,
   EventosIdRoute: EventosIdRoute,
   FinanceiroFluxoRoute: FinanceiroFluxoRoute,
   FinanceiroPagarRoute: FinanceiroPagarRoute,
   FinanceiroReceberRoute: FinanceiroReceberRoute,
+  OrcamentosIdRoute: OrcamentosIdRoute,
   OrcamentosNovoRoute: OrcamentosNovoRoute,
   ClientesIndexRoute: ClientesIndexRoute,
   EventosIndexRoute: EventosIndexRoute,

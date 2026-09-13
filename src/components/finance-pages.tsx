@@ -2,23 +2,24 @@ import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AppShell, TopBar, Section, Money } from "./app-shell";
-import {
-  AddButton,
-  Field,
-  SelectField,
-  Modal,
-  Empty,
-  MenuLink,
-  buttonClass,
-  cardClass,
-} from "./forms";
-import { useStore, uid, demoToday, dateLabel, type Bill } from "@/lib/store";
+import { AddButton, Field, SelectField, Modal, Empty, buttonClass, cardClass } from "./forms";
+import { useStore, uid, demoToday, dateLabel, downloadText, type Bill } from "@/lib/store";
 import { brlExact } from "@/lib/data";
 
 export function FinancePage() {
   const { state } = useStore();
+  const [periodMode, setPeriodMode] = useState<"month" | "year">("month");
   const [month, setMonth] = useState("2026-06");
-  const bills = state.contas.filter((c) => c.vencimento.startsWith(month));
+  const [year, setYear] = useState("2026");
+  const period = periodMode === "month" ? month : year;
+  const years = [
+    ...new Set([
+      year,
+      ...state.contas.map((bill) => bill.vencimento.slice(0, 4)),
+      ...state.eventos.map((event) => event.date.slice(0, 4)),
+    ]),
+  ].sort((a, b) => b.localeCompare(a));
+  const bills = state.contas.filter((c) => c.vencimento.startsWith(period));
   const income = bills.filter((c) => c.tipo === "receber").reduce((s, c) => s + c.pago, 0);
   const expense = bills.filter((c) => c.tipo === "pagar").reduce((s, c) => s + c.pago, 0);
   const receivable = bills
@@ -26,20 +27,119 @@ export function FinancePage() {
     .reduce((s, c) => s + c.valor - c.pago, 0);
   const payable = bills.filter((c) => c.tipo === "pagar").reduce((s, c) => s + c.valor - c.pago, 0);
   const events = state.eventos.filter(
-    (e) => e.date.startsWith(month) && !["Cancelado", "Orçamento"].includes(e.status),
+    (e) => e.date.startsWith(period) && !["Cancelado", "Orçamento"].includes(e.status),
   );
   const revenue = events.reduce((s, e) => s + e.total, 0);
   const costs = events.reduce((s, e) => s + e.custos, 0);
+  const paidExpenses = bills.filter((c) => c.tipo === "pagar");
+  const expenseCategories = [...new Set(paidExpenses.map((bill) => bill.categoria))]
+    .map((name) => ({
+      name,
+      value: paidExpenses
+        .filter((bill) => bill.categoria === name)
+        .reduce((sum, bill) => sum + bill.pago, 0),
+    }))
+    .filter((category) => category.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const paidExpenseTotal = expenseCategories.reduce((sum, category) => sum + category.value, 0);
+  const clientResults = state.clientes
+    .map((client) => {
+      const clientEvents = events.filter((event) => event.clienteId === client.id);
+      return {
+        ...client,
+        periodEvents: clientEvents.length,
+        periodValue: clientEvents.reduce((sum, event) => sum + event.total, 0),
+      };
+    })
+    .filter((client) => client.periodEvents > 0)
+    .sort((a, b) => b.periodValue - a.periodValue);
+  const recurrentClients = clientResults.filter((client) => client.recorrente).length;
+  const averageTicket = events.length ? revenue / events.length : 0;
+  const itemUsage = state.estoque
+    .map((item) => ({
+      name: item.nome,
+      quantity: events.reduce(
+        (total, event) =>
+          total +
+          event.itens
+            .filter((line) => line.estoqueId === item.id)
+            .reduce((sum, line) => sum + line.qtd, 0),
+        0,
+      ),
+    }))
+    .filter((item) => item.quantity > 0)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 3);
+  function exportSummary() {
+    const rows = [
+      ["Faturamento contratado", revenue],
+      ["Lucro estimado", revenue - costs],
+      ["Entradas recebidas", income],
+      ["Despesas pagas", expense],
+      ["A receber", receivable],
+      ["A pagar", payable],
+      ["Eventos contratados", events.length],
+      ["Clientes atendidos", clientResults.length],
+    ] as const;
+    downloadText(
+      "financeiro-" + period + ".csv",
+      "\uFEFFPeríodo;Indicador;Valor\n" +
+        rows
+          .map(([label, value]) => period + ";" + label + ";" + String(value).replace(".", ","))
+          .join("\n"),
+      "text/csv;charset=utf-8",
+    );
+  }
   return (
     <AppShell>
-      <TopBar overline="Cada detalhe na conta" title="Financeiro" />
+      <TopBar title="Financeiro" />
       <div className="space-y-3 px-4 pt-4">
-        <Field
-          label="Período"
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-        />
+        <div className="rounded-xl bg-ink/5 p-1 ring-1 ring-inset ring-ink/10">
+          <div className="grid grid-cols-2 gap-1">
+            {(["month", "year"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={periodMode === mode}
+                onClick={() => {
+                  setPeriodMode(mode);
+                  if (mode === "year") setYear(month.slice(0, 4));
+                  else setMonth(`${year}-${month.slice(5)}`);
+                }}
+                className={`min-h-10 rounded-lg text-xs font-semibold transition-colors ${
+                  periodMode === mode ? "bg-cream text-ink shadow-sm" : "text-ink/50"
+                }`}
+              >
+                {mode === "month" ? "Mensal" : "Anual"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="block space-y-1.5 text-xs font-medium">
+          <span>{periodMode === "month" ? "Mês do relatório" : "Ano do relatório"}</span>
+          {periodMode === "month" ? (
+            <input
+              aria-label="Mês do relatório"
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="min-h-11 w-full rounded-lg border border-ink/20 bg-cream px-3 py-2 text-base outline-none focus:ring-2 focus:ring-brand"
+            />
+          ) : (
+            <select
+              aria-label="Ano do relatório"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="min-h-11 w-full rounded-lg border border-ink/20 bg-cream px-3 py-2 text-base outline-none focus:ring-2 focus:ring-brand"
+            >
+              {years.map((availableYear) => (
+                <option key={availableYear} value={availableYear}>
+                  {availableYear}
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
         <div className="rounded-xl bg-ink p-4 text-cream">
           <p className="text-xs text-cream/60">Saldo do período</p>
           <Money value={brlExact(income - expense)} className="my-2 block text-3xl" />
@@ -55,20 +155,14 @@ export function FinancePage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Link
-            to="/financeiro/receber"
-            className="rounded-xl bg-brand/10 p-3 ring-1 ring-brand/30"
-          >
+          <div className="rounded-xl bg-brand/10 p-3 ring-1 ring-brand/30">
             <p className="text-xs">A receber</p>
             <Money value={brlExact(receivable)} className="mt-1 block text-lg" />
-          </Link>
-          <Link
-            to="/financeiro/pagar"
-            className="rounded-xl bg-accent/10 p-3 ring-1 ring-accent/30"
-          >
+          </div>
+          <div className="rounded-xl bg-accent/10 p-3 ring-1 ring-accent/30">
             <p className="text-xs">A pagar</p>
             <Money value={brlExact(payable)} className="mt-1 block text-lg" />
-          </Link>
+          </div>
         </div>
         <div className={cardClass}>
           <p className="flex justify-between gap-2 text-xs">
@@ -81,49 +175,204 @@ export function FinancePage() {
             Valor contratado menos custos estimados. Pode mudar até a festa acontecer.
           </p>
         </div>
-      </div>
-      <Section title="Sua rotina financeira">
-        <div className="space-y-2">
-          <MenuLink
-            to="/financeiro/receber"
-            title="Contas a receber"
-            subtitle="Parcelas, vencimentos e recebimentos"
-          />
-          <MenuLink
-            to="/financeiro/pagar"
-            title="Contas a pagar"
-            subtitle="Compras, deslocamento e fornecedores"
-          />
-          <MenuLink
-            to="/financeiro/fluxo"
-            title="Fluxo de caixa"
-            subtitle="Entradas e saídas ao longo dos meses"
-          />
-          <MenuLink to="/relatorios" title="Relatórios" subtitle="Uma visão clara do seu negócio" />
-        </div>
-      </Section>
-      <Section title="Resultado por evento">
-        <div className="space-y-2">
-          {events.map((e) => (
-            <Link
-              key={e.id}
-              to="/eventos/$id"
-              params={{ id: e.id }}
-              className={cardClass + " block"}
-            >
-              <p className="text-sm font-semibold">{e.tema}</p>
-              <p className="mt-1 text-xs text-ink/55">
-                {e.cliente} · {dateLabel(e.date)}
-              </p>
-              <div className="mt-3 flex justify-between text-xs">
-                <span>Lucro estimado</span>
-                <Money value={brlExact(e.total - e.custos)} className="text-brand" />
-              </div>
-            </Link>
+        <div className="grid grid-cols-2 gap-2.5">
+          {[
+            ["Eventos contratados", String(events.length)],
+            ["Ticket médio", brlExact(averageTicket)],
+            ["Clientes atendidos", String(clientResults.length)],
+            ["Clientes recorrentes", String(recurrentClients)],
+          ].map(([label, value]) => (
+            <div key={label} className={cardClass}>
+              <p className="text-[11px] text-ink/50">{label}</p>
+              <p className="mt-1 font-mono text-lg font-bold">{value}</p>
+            </div>
           ))}
-          {!events.length && <Empty title="Nenhum evento neste período" />}
         </div>
-      </Section>
+      </div>
+      <div className="space-y-6 px-4 pb-6 pt-5">
+        <section aria-labelledby="movimentacoes-relatorio">
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink/45">Relatório</p>
+              <h2 id="movimentacoes-relatorio" className="text-sm font-semibold">
+                Contas e movimentações
+              </h2>
+            </div>
+            <span className="text-[10px] text-ink/45">Realizado · Pendente · Total</span>
+          </div>
+          <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+            {[
+              ["Recebimentos", income, receivable, income + receivable],
+              ["Pagamentos", expense, payable, expense + payable],
+            ].map(([label, realized, pending, total], index) => (
+              <div
+                key={String(label)}
+                className={`px-3 py-3 ${index ? "border-t border-ink/10" : ""}`}
+              >
+                <p className="mb-2 text-xs font-semibold">{label}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    ["Realizado", realized],
+                    ["Pendente", pending],
+                    ["Total", total],
+                  ].map(([valueLabel, value]) => (
+                    <div key={String(valueLabel)} className="min-w-0">
+                      <p className="text-[9px] uppercase tracking-wide text-ink/40">{valueLabel}</p>
+                      <Money
+                        value={brlExact(Number(value))}
+                        className={`mt-0.5 block truncate text-[11px] ${
+                          valueLabel === "Total" ? "font-semibold" : "text-ink/65"
+                        }`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="resultado-eventos">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 id="resultado-eventos" className="text-sm font-semibold">
+              Resultado dos eventos
+            </h2>
+            <span className="text-[11px] text-ink/45">{events.length} eventos</span>
+          </div>
+          {events.length ? (
+            <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 bg-ink/[0.035] px-3 py-2 text-[9px] font-semibold uppercase tracking-wide text-ink/45">
+                <span>Evento</span>
+                <span className="text-right">Lucro estimado</span>
+              </div>
+              {events.map((event, index) => (
+                <div
+                  key={event.id}
+                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 ${
+                    index ? "border-t border-ink/10" : ""
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold">{event.tema}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-ink/50">
+                      {event.cliente} · {dateLabel(event.date)}
+                    </p>
+                  </div>
+                  <Money
+                    value={brlExact(event.total - event.custos)}
+                    className="text-xs text-brand"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty title="Nenhum evento neste período" />
+          )}
+        </section>
+
+        <section aria-labelledby="clientes-periodo">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 id="clientes-periodo" className="text-sm font-semibold">
+              Clientes no período
+            </h2>
+            <span className="text-[11px] text-ink/45">Por valor contratado</span>
+          </div>
+          {clientResults.length ? (
+            <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+              {clientResults.map((client, index) => (
+                <div
+                  key={client.id}
+                  className={`grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-3 ${
+                    index ? "border-t border-ink/10" : ""
+                  }`}
+                >
+                  <span className="font-mono text-[10px] text-ink/35">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold">{client.nome}</p>
+                    <p className="mt-0.5 text-[10px] text-ink/50">
+                      {client.periodEvents} {client.periodEvents === 1 ? "evento" : "eventos"}
+                      {client.recorrente ? " · recorrente" : ""}
+                    </p>
+                  </div>
+                  <Money value={brlExact(client.periodValue)} className="text-xs text-brand" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty title="Nenhum cliente atendido neste período" />
+          )}
+        </section>
+
+        <section aria-labelledby="despesas-categoria">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 id="despesas-categoria" className="text-sm font-semibold">
+              Despesas por categoria
+            </h2>
+            <Money value={brlExact(paidExpenseTotal)} className="text-xs text-ink/55" />
+          </div>
+          {expenseCategories.length ? (
+            <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+              {expenseCategories.map((category, index) => (
+                <div
+                  key={category.name}
+                  className={`px-3 py-3 ${index ? "border-t border-ink/10" : ""}`}
+                >
+                  <div className="mb-2 flex justify-between gap-2 text-xs">
+                    <span>{category.name}</span>
+                    <Money value={brlExact(category.value)} />
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-accent/10">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{
+                        width: paidExpenseTotal
+                          ? String((category.value / paidExpenseTotal) * 100) + "%"
+                          : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty title="Nenhuma despesa paga neste período" />
+          )}
+        </section>
+
+        <section aria-labelledby="itens-utilizados">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 id="itens-utilizados" className="text-sm font-semibold">
+              Itens mais utilizados
+            </h2>
+            <span className="text-[11px] text-ink/45">Top 3</span>
+          </div>
+          {itemUsage.length ? (
+            <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+              {itemUsage.map((item, index) => (
+                <div
+                  key={item.name}
+                  className={`grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-3 ${
+                    index ? "border-t border-ink/10" : ""
+                  }`}
+                >
+                  <span className="font-mono text-[10px] text-ink/35">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <p className="min-w-0 truncate text-xs">{item.name}</p>
+                  <span className="font-mono text-xs font-semibold">{item.quantity} un.</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty title="Nenhum item utilizado neste período" />
+          )}
+          <button type="button" onClick={exportSummary} className={buttonClass + " mt-4 w-full"}>
+            Exportar relatório financeiro
+          </button>
+        </section>
+      </div>
     </AppShell>
   );
 }
@@ -350,7 +599,6 @@ export function BillsPage({ type }: { type: Bill["tipo"] }) {
     <AppShell>
       <TopBar
         title={type === "receber" ? "Contas a receber" : "Contas a pagar"}
-        overline="Um compromisso de cada vez"
         back={{ to: "/financeiro", label: "Financeiro" }}
         right={<AddButton label="Adicionar conta" onClick={() => setOpen(true)} />}
       />
@@ -457,11 +705,7 @@ export function CashFlowPage() {
   let balance = 0;
   return (
     <AppShell>
-      <TopBar
-        title="Fluxo de caixa"
-        overline="Para planejar com calma"
-        back={{ to: "/financeiro", label: "Financeiro" }}
-      />
+      <TopBar title="Fluxo de caixa" back={{ to: "/financeiro", label: "Financeiro" }} />
       <div className="space-y-3 px-4 pt-4">
         <SelectField label="Ano" value={year} onChange={setYear}>
           {[

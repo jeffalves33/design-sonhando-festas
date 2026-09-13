@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Phone, Heart, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronRight, FileText, Heart, Phone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, TopBar, Section, Money, StatusChip } from "./app-shell";
 import { AddButton, Field, Notes, Modal, Empty, buttonClass, cardClass } from "./forms";
@@ -127,11 +127,10 @@ export function ClientsPage() {
   return (
     <AppShell>
       <TopBar
-        overline="Relacionamentos que ficam"
         title="Clientes"
         right={<AddButton label="Cadastrar cliente" onClick={() => setOpen(true)} />}
       />
-      <div className="space-y-3 px-4 pt-4">
+      <div className="w-full min-w-0 space-y-3 px-4 pt-4">
         <Field
           label="Buscar cliente"
           type="search"
@@ -155,7 +154,7 @@ export function ClientsPage() {
             key={c.id}
             to="/clientes/$id"
             params={{ id: c.id }}
-            className={cardClass + " flex items-center gap-3"}
+            className={cardClass + " flex min-w-0 items-center gap-3 overflow-hidden"}
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-full bg-brand/10 font-mono text-brand">
               {c.nome
@@ -213,11 +212,16 @@ export function ClientDetail({ id }: { id: string }) {
       .filter((e) => !["Cancelado", "Orçamento"].includes(e.status))
       .reduce((s, e) => s + e.total, 0) +
     historic.filter((e) => e.status !== "Cancelado").reduce((s, e) => s + e.valor, 0);
+  const eventHistory = live.filter((e) => e.status !== "Orçamento");
+  const savedQuotes = c.orcamentos.filter((o) => !live.some((e) => e.total === o.valor));
+  const quoteCount = live.length + savedQuotes.length;
+  const lastEvent = live
+    .filter((e) => e.status === "Realizado")
+    .sort((a, b) => b.date.localeCompare(a.date))[0]?.tema;
   return (
     <AppShell>
       <TopBar
         title={c.nome}
-        overline={c.recorrente ? "Cliente recorrente ♥" : `Com a gente desde ${c.desde}`}
         back={{ to: "/clientes", label: "Clientes" }}
         right={
           <button
@@ -228,119 +232,223 @@ export function ClientDetail({ id }: { id: string }) {
           </button>
         }
       />
-      <div className="px-4 pt-4">
-        <div className="rounded-xl bg-ink p-4 text-cream">
-          <p className="text-xs text-cream/60">Histórias construídas juntos</p>
-          <Money value={brlExact(total)} className="mt-2 block text-2xl" />
-          <p className="mt-1 text-xs text-cream/60">em eventos contratados</p>
+      <main className="space-y-4 px-4 pb-6 pt-4">
+        <section className="overflow-hidden rounded-2xl bg-ink text-cream">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="grid size-11 shrink-0 place-items-center rounded-full bg-brand text-lg font-semibold text-cream">
+                {c.nome.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{c.nome}</p>
+                <p className="mt-0.5 text-[11px] text-cream/55">
+                  Cliente desde {c.desde}
+                  {c.recorrente ? " · Recorrente" : ""}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-cream/50">
+                Total contratado
+              </p>
+              <Money value={brlExact(total)} className="mt-1 block text-3xl leading-none" />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 divide-x divide-cream/15 rounded-xl bg-cream/8 py-3">
+              <div className="px-3">
+                <p className="text-lg font-semibold leading-none">
+                  {eventHistory.length + historic.length}
+                </p>
+                <p className="mt-1 text-[10px] text-cream/55">eventos no histórico</p>
+              </div>
+              <div className="px-3">
+                <p className="text-lg font-semibold leading-none">{quoteCount}</p>
+                <p className="mt-1 text-[10px] text-cream/55">orçamentos registrados</p>
+              </div>
+            </div>
+          </div>
           <a
             href={`tel:${c.telefone.replace(/\D/g, "")}`}
-            className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-cream/10 text-sm"
+            className="flex min-h-12 items-center justify-center gap-2 border-t border-cream/10 bg-cream/8 px-4 text-sm font-medium"
           >
             <Phone className="size-4" />
-            {c.telefone}
+            Ligar para {c.telefone}
           </a>
-        </div>
-      </div>
-      <Section title="Próxima oportunidade">
-        <div className={cardClass}>
-          <p className="text-sm font-semibold">
-            {c.proximaOportunidade || "Vamos planejar uma nova festa?"}
-          </p>
-          <p className="mt-2 text-xs text-ink/60">
-            Último evento:{" "}
-            {live
-              .filter((e) => e.status === "Realizado")
-              .sort((a, b) => b.date.localeCompare(a.date))[0]?.tema || c.ultimoEvento}
-          </p>
-          {c.datas.map((d) => (
-            <p key={d.label} className="mt-2 text-xs">
-              {d.label} · <b>{d.valor}</b>
+        </section>
+
+        <section
+          aria-labelledby="relacionamento-cliente"
+          className="rounded-2xl ring-1 ring-ink/15"
+        >
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+                <Sparkles className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45">
+                  Próxima oportunidade
+                </p>
+                <h2
+                  id="relacionamento-cliente"
+                  className="mt-1 text-base font-semibold leading-snug"
+                >
+                  {c.proximaOportunidade || "Vamos planejar uma nova festa?"}
+                </h2>
+                <p className="mt-2 text-xs text-ink/55">
+                  Último evento: {lastEvent || c.ultimoEvento}
+                </p>
+              </div>
+            </div>
+          </div>
+          {!!c.datas.length && (
+            <div className="border-t border-ink/10 px-4 py-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold">
+                <CalendarDays className="size-4 text-brand" /> Datas importantes
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {c.datas.map((d) => (
+                  <div key={d.label} className="rounded-lg bg-ink/5 px-3 py-2.5">
+                    <p className="text-[10px] text-ink/50">{d.label}</p>
+                    <p className="mt-0.5 text-xs font-semibold">{d.valor}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section
+          aria-labelledby="preferencias-cliente"
+          className="rounded-2xl bg-brand/7 p-4 ring-1 ring-brand/15"
+        >
+          <div className="flex items-center gap-2">
+            <Heart className="size-4 text-brand" />
+            <h2 id="preferencias-cliente" className="text-sm font-semibold">
+              Do jeito que o cliente gosta
+            </h2>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {c.preferencias.map((p) => (
+              <span
+                key={p}
+                className="rounded-full bg-cream px-3 py-2 text-xs text-brand ring-1 ring-brand/15"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
+          <div className="mt-3 rounded-xl bg-cream/70 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink/45">
+              Observações
             </p>
-          ))}
-        </div>
-      </Section>
-      <Section title="Do jeito que o cliente gosta">
-        <div className="flex flex-wrap gap-2">
-          {c.preferencias.map((p) => (
-            <span key={p} className="rounded-full bg-brand/10 px-3 py-2 text-xs text-brand">
-              {p}
+            <p className="mt-1 text-sm leading-relaxed text-ink/70">
+              {c.observacoes || "Anote aqui os detalhes que fazem a diferença."}
+            </p>
+          </div>
+        </section>
+
+        <section aria-labelledby="historico-eventos">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="size-4 text-brand" />
+              <h2 id="historico-eventos" className="text-sm font-semibold">
+                Histórico de eventos
+              </h2>
+            </div>
+            <span className="text-[11px] text-ink/45">
+              {eventHistory.length + historic.length} registros
             </span>
-          ))}
-        </div>
-        <p className="mt-3 text-sm text-ink/65">
-          {c.observacoes || "Anote aqui os detalhes que fazem a diferença."}
-        </p>
-      </Section>
-      <Section title="Histórico de eventos">
-        <div className="space-y-2">
-          {live
-            .filter((e) => e.status !== "Orçamento")
-            .map((e) => (
+          </div>
+          <div className="space-y-2">
+            {eventHistory.map((e) => (
               <Link
                 key={e.id}
                 to="/eventos/$id"
                 params={{ id: e.id }}
-                className={cardClass + " block"}
+                className={cardClass + " flex items-center gap-3"}
               >
-                <p className="text-sm font-semibold">{e.tema}</p>
-                <p className="my-2 text-xs text-ink/55">
-                  {dateLabel(e.date)} · {brlExact(e.total)}
-                </p>
-                <StatusChip label={e.status} tone={statusTone[e.status]} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{e.tema}</p>
+                  <p className="mt-1 text-xs text-ink/55">
+                    {dateLabel(e.date)} · {brlExact(e.total)}
+                  </p>
+                  <div className="mt-2">
+                    <StatusChip label={e.status} tone={statusTone[e.status]} />
+                  </div>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-ink/30" />
               </Link>
             ))}
-          {historic.map((h, i) => (
-            <div className={cardClass} key={i}>
-              <p className="text-sm font-semibold">{h.titulo}</p>
-              <p className="text-xs text-ink/55">
-                {h.data} · {brlExact(h.valor)} · {h.status}
-              </p>
+            {historic.map((h, i) => (
+              <div className={cardClass + " bg-ink/[0.025]"} key={i}>
+                <p className="text-sm font-semibold">{h.titulo}</p>
+                <p className="mt-1 text-xs text-ink/55">
+                  {h.data} · {brlExact(h.valor)} · {h.status}
+                </p>
+              </div>
+            ))}
+            {!historic.length && !live.some((e) => e.status !== "Orçamento") && (
+              <Empty
+                title="A primeira festa vem aí"
+                text="Os eventos confirmados aparecerão aqui."
+              />
+            )}
+          </div>
+        </section>
+
+        <section aria-labelledby="orcamentos-cliente">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4 text-brand" />
+              <h2 id="orcamentos-cliente" className="text-sm font-semibold">
+                Orçamentos
+              </h2>
             </div>
-          ))}
-          {!historic.length && !live.some((e) => e.status !== "Orçamento") && (
-            <Empty title="A primeira festa vem aí" text="Os eventos confirmados aparecerão aqui." />
-          )}
-        </div>
-      </Section>
-      <Section title="Orçamentos">
-        <div className="space-y-2">
-          {live.map((e) => (
-            <Link
-              key={e.id}
-              to="/eventos/$id"
-              params={{ id: e.id }}
-              className={cardClass + " block"}
-            >
-              <p className="text-sm font-semibold">{e.tema}</p>
-              <p className="text-xs text-ink/55">
-                {brlExact(e.total)} ·{" "}
-                {e.status === "Orçamento"
-                  ? e.enviado
-                    ? "Enviado"
-                    : "Pendente"
-                  : e.status === "Cancelado"
-                    ? "Cancelado"
-                    : "Aprovado"}
-              </p>
-            </Link>
-          ))}
-          {c.orcamentos
-            .filter((o) => !live.some((e) => e.total === o.valor))
-            .map((o, i) => (
+            <span className="text-[11px] text-ink/45">{quoteCount} registros</span>
+          </div>
+          <div className="space-y-2">
+            {live.map((e) => (
+              <Link
+                key={e.id}
+                to="/eventos/$id"
+                params={{ id: e.id }}
+                className={cardClass + " flex items-center gap-3"}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{e.tema}</p>
+                  <p className="mt-1 text-xs text-ink/55">
+                    {brlExact(e.total)} ·{" "}
+                    {e.status === "Orçamento"
+                      ? e.enviado
+                        ? "Enviado"
+                        : "Pendente"
+                      : e.status === "Cancelado"
+                        ? "Cancelado"
+                        : "Aprovado"}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-ink/30" />
+              </Link>
+            ))}
+            {savedQuotes.map((o, i) => (
               <div key={i} className={cardClass}>
                 <p className="text-sm font-semibold">{o.titulo}</p>
-                <p className="text-xs text-ink/55">
+                <p className="mt-1 text-xs text-ink/55">
                   {o.data} · {brlExact(o.valor)} · {o.status}
                 </p>
               </div>
             ))}
-          {!live.length && !c.orcamentos.length && <Empty title="Nenhum orçamento por enquanto" />}
-        </div>
-        <Link to="/orcamentos/novo" className={buttonClass + " mt-3 w-full"}>
-          Criar orçamento
-        </Link>
-      </Section>
+            {!live.length && !c.orcamentos.length && (
+              <Empty title="Nenhum orçamento por enquanto" />
+            )}
+          </div>
+          <Link to="/orcamentos/novo" className={buttonClass + " mt-3 w-full"}>
+            Criar orçamento
+          </Link>
+        </section>
+      </main>
       <Modal open={open} onClose={() => setOpen(false)} title="Editar cliente">
         <ClientForm client={c} close={() => setOpen(false)} />
       </Modal>

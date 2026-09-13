@@ -52,7 +52,6 @@ function DetalheEvento() {
     <AppShell>
       <TopBar
         back={{ to: "/eventos", label: "Eventos" }}
-        overline={`${e.dataCurta} · ${e.inicio} – ${e.fim}`}
         title={e.tipo}
         right={<StatusChip label={e.status} tone={statusTone[e.status]} />}
       />
@@ -94,6 +93,25 @@ function DetalheEvento() {
           </div>
         ) : null}
       </div>
+
+      {e.referenciaImagem && (
+        <Section title="Referência do cliente">
+          <div className="overflow-hidden rounded-xl ring-1 ring-ink/15">
+            <img
+              src={e.referenciaImagem}
+              alt="Imagem de referência enviada pelo cliente"
+              className="h-56 w-full object-cover"
+            />
+            <div className="p-3">
+              <p className="text-xs font-semibold">Imagem recebida pelo WhatsApp</p>
+              <p className="mt-1 text-[11px] text-ink/55">
+                Inspiração de estilo, cores e composição para esta proposta. Será incluída no
+                relatório em PDF.
+              </p>
+            </div>
+          </div>
+        </Section>
+      )}
 
       <Section title="Itens e serviços contratados">
         <div className="divide-y divide-ink/10 rounded-lg ring-1 ring-ink/15">
